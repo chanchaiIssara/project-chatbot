@@ -18,6 +18,11 @@ import kotlinx.coroutines.*
 
 
 class MainActivity : AppCompatActivity() {
+    private val TAG = "MainActivity"
+
+    //You can ignore this messageList if you're coming from the tutorial,
+    // it was used only for my personal debugging
+    var messagesList = mutableListOf<Message>()
 
     private  lateinit var adapter: MessagingAdapter
     private val botList = listOf("Peter","Francesca","Luigi","Igor")
@@ -31,7 +36,7 @@ class MainActivity : AppCompatActivity() {
         clickEvents()
 
         val random =(0..3).random()
-        customMessage("Hello! Today you're speaking with ${botList[random]}, how may I help?")
+        customBotMessage("Hello! Today you're speaking with ${botList[random]}, how may I help?")
 
     }
 
@@ -43,6 +48,7 @@ class MainActivity : AppCompatActivity() {
         et_message.setOnClickListener{
             GlobalScope.launch {
                 delay(100)
+
                 withContext(Dispatchers.Main){
                     rv_messages.scrollToPosition(adapter.itemCount -1)
                 }
@@ -57,6 +63,16 @@ class MainActivity : AppCompatActivity() {
         rv_messages.adapter = adapter
         rv_messages.layoutManager = LinearLayoutManager(applicationContext)
     }
+    override fun onStart() {
+        super.onStart()
+        //In case there are messages, scroll to bottom when re-opening app
+        GlobalScope.launch {
+            delay(100)
+            withContext(Dispatchers.Main) {
+                rv_messages.scrollToPosition(adapter.itemCount - 1)
+            }
+        }
+    }
 
 
     private fun sendMessage(){
@@ -64,6 +80,7 @@ class MainActivity : AppCompatActivity() {
         val timeStamp = Time.timeStamp()
 
         if(message.isNotEmpty()){
+            messagesList.add(Message(message, SEND_ID, timeStamp))
             et_message.setText("")
 
             adapter.insertMessage(Message(message,SEND_ID, timeStamp))
@@ -78,10 +95,13 @@ class MainActivity : AppCompatActivity() {
 
         GlobalScope.launch {
             delay(1000)
+
             withContext(Dispatchers.Main) {
                 val response = BotResponse.basicResponses(message)
 
-                adapter.insertMessage(Message(message, RECEIVE_ID, timeStamp))
+                messagesList.add(Message(response, RECEIVE_ID, timeStamp))
+
+                adapter.insertMessage(Message(response, RECEIVE_ID, timeStamp))
                 rv_messages.scrollToPosition(adapter.itemCount - 1)
                 when (response) {
                     OPEN_GOOGLE -> {
@@ -100,12 +120,15 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    override fun onStart(){
-        super.onStart()
+    private fun customBotMessage(message: String) {
 
         GlobalScope.launch{
             delay(1000)
             withContext(Dispatchers.Main){
+                val timeStamp = Time.timeStamp()
+                messagesList.add(Message(message, RECEIVE_ID, timeStamp))
+                adapter.insertMessage(Message(message, RECEIVE_ID, timeStamp))
+
                 rv_messages.scrollToPosition(adapter.itemCount -1)
             }
         }
@@ -113,17 +136,6 @@ class MainActivity : AppCompatActivity() {
 
     }
 
-    private fun customMessage(message: String) {
-        GlobalScope.launch{
-            delay(1000)
-            withContext(Dispatchers.Main){
-                val timeStamp = Time.timeStamp()
-                adapter.insertMessage(Message(message, RECEIVE_ID, timeStamp))
 
-                rv_messages.scrollToPosition(adapter.itemCount-1)
-
-            }
-        }
-    }
 
 }
